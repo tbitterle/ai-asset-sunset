@@ -1,0 +1,31 @@
+# Copyright 2026 The ai-asset-sunset authors. Licensed under Apache-2.0.
+# Community policy (p4a). Not a MuleSoft product; not supported by MuleSoft.
+[package]
+name = "ai_asset_sunset"
+version = "1.0.0"
+rust-version = "1.89.0"
+edition = "2021"
+resolver = "2"
+
+[package.metadata.anypoint]
+group_id = "00000000-0000-0000-0000-000000000000"
+definition_asset_id = { name = "ai-asset-sunset", version = "1.0.0" }
+implementation_asset_id = "ai-asset-sunset-flex"
+
+[dependencies]
+pdk = { version = "1.10.0", features = ["enable_stop_iteration"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+anyhow = "1.0"
+chrono = { version = "0.4", default-features = false, features = ["alloc", "std"] }
+
+[dev-dependencies]
+pdk-unit = { version = "1.10.0", features = ["enable_stop_iteration", "experimental_local_mode"] }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+lto = true
+opt-level = 'z'
+strip = "debuginfo"

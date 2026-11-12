@@ -1,0 +1,4 @@
+target/
+.anypoint/
+playground/config/custom-policies/*
+!playground/config/custom-policies/note.txt

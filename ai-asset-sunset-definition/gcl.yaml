@@ -1,0 +1,171 @@
+---
+apiVersion: gateway.mulesoft.com/v1alpha1
+kind: Extension
+metadata:
+  labels:
+    title: AI Asset Sunset
+    category: Compliance
+    description: >-
+      Date-phased deprecation for agents, MCP servers, LLM routes and APIs:
+      heads-up headers and metadata, scheduled brownouts, then a protocol-aware
+      tombstone that answers without calling upstream.
+    metadata/interfaceScope: api
+    metadata/capabilities/assetTypes: http,rest,mcp,a2a,a2av1,llm
+spec:
+  extends:
+    - name: extension-definition
+      namespace: default
+  properties:
+    deprecationAt:
+      type: string
+      description: >-
+        Start of the heads-up phase. RFC 3339 with explicit offset, e.g.
+        2026-12-01T00:00:00Z. Traffic still flows; deprecation signals are added.
+    sunsetAt:
+      type: string
+      description: >-
+        Start of the tombstone phase (RFC 3339 with offset). From here on new
+        requests are answered by the policy, the upstream is not called.
+    switchOffAt:
+      type: string
+      description: >-
+        Planned removal of the instance (RFC 3339 with offset). Informational;
+        after this date the policy keeps answering and logs a warning so the
+        AI Steward removes the instance.
+    message:
+      type: string
+      description: Short human/LLM readable notice (max 500 characters).
+      default: "This service is deprecated and will be retired."
+    successorName:
+      type: string
+      description: Name of the replacement agent, MCP server, model or API.
+      default: ""
+    successorUrl:
+      type: string
+      description: Endpoint or Exchange URL of the replacement.
+      default: ""
+    docsUrl:
+      type: string
+      description: Public deprecation notice / migration guide URL (Link rel="deprecation").
+      default: ""
+    contactName:
+      type: string
+      description: Owning team or role (use a role, not a person).
+      default: ""
+    contactEmail:
+      type: string
+      description: Role mailbox or channel for questions (shown only to identified callers).
+      default: ""
+    protocol:
+      type: string
+      description: >-
+        Response shape. 'auto' detects MCP / A2A / LLM (OpenAI-compatible) /
+        plain HTTP from method, path, headers and JSON-RPC body.
+      enum: [auto, mcp, a2a, llm, http]
+      default: auto
+    mcpTombstoneStyle:
+      type: string
+      description: >-
+        'toolResult' answers tools/call with isError:true so the model can read
+        the notice (recommended); 'jsonRpcError' returns a JSON-RPC error.
+      enum: [toolResult, jsonRpcError]
+      default: toolResult
+    llmTombstoneStyle:
+      type: string
+      description: >-
+        'error' returns HTTP 410 with an OpenAI-compatible error object
+        (recommended). 'assistantMessage' returns a chat completion carrying the
+        notice — human chat UIs only, risky for agent pipelines.
+      enum: [error, assistantMessage]
+      default: error
+    disclosure:
+      type: string
+      description: >-
+        How much is shown in tombstones. 'minimal' = status, dates, docsUrl.
+        'standard' adds successor and contact for identified callers. 'full'
+        shows everything to everyone.
+      enum: [minimal, standard, full]
+      default: standard
+    injectBodyMetadata:
+      type: boolean
+      description: >-
+        In heads-up, add a deprecation object to buffered JSON responses
+        (MCP result._meta, A2A result.metadata). Never applied to SSE/streams.
+      default: true
+    annotateToolDescriptions:
+      type: boolean
+      description: In heads-up, append the notice to every tool description in MCP tools/list responses.
+      default: false
+    maxBodyRewriteBytes:
+      type: integer
+      description: Largest response body (bytes) the policy will rewrite in heads-up.
+      default: 262144
+      minimum: 1024
+      maximum: 1048576
+    taskGraceMinutes:
+      type: integer
+      description: >-
+        After sunsetAt, follow-up calls on running A2A/MCP tasks (get, cancel,
+        resubscribe) still pass to upstream for this many minutes (capped at
+        switchOffAt). Only applies when protocol is set explicitly to 'mcp' or 'a2a'.
+      default: 1440
+      minimum: 0
+      maximum: 20160
+    identifyYourselfAt:
+      type: string
+      description: >-
+        Optional (RFC 3339). From this date, requests without an identified
+        client (no client_id from an upstream auth policy) get the tombstone early.
+      default: ""
+    brownouts:
+      type: array
+      description: Pre-announced windows inside the heads-up phase that already return the tombstone.
+      default: []
+      items:
+        type: object
+        properties:
+          start:
+            type: string
+            description: Window start, RFC 3339 with offset.
+          durationMinutes:
+            type: integer
+            description: Window length in minutes.
+            minimum: 1
+            maximum: 1440
+        required: [start, durationMinutes]
+    exemptions:
+      type: array
+      description: >-
+        Time-boxed exemptions for identified clients (client_id from Client ID
+        Enforcement / JWT upstream, never from a raw header). Capped at switchOffAt.
+      default: []
+      items:
+        type: object
+        properties:
+          clientId:
+            type: string
+            description: client_id as set by the upstream authentication policy.
+          until:
+            type: string
+            description: Exemption end, RFC 3339 with offset.
+          reason:
+            type: string
+            description: Ticket or justification (logged as evidence).
+        required: [clientId, until]
+    emitViolation:
+      type: boolean
+      description: >-
+        Report a policy violation (with client app) for deprecated calls so an
+        API alert of type Policy Violation can notify the AI Steward. Only one
+        violation per request is kept by the gateway — disable if it would mask
+        violations of other policies.
+      default: true
+    cacheClampSeconds:
+      type: integer
+      description: In heads-up, clamp MCP tools/list ttlMs and agent card max-age to this value.
+      default: 3600
+      minimum: 0
+  required:
+    - deprecationAt
+    - sunsetAt
+    - switchOffAt

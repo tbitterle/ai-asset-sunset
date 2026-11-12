@@ -1,0 +1,28 @@
+# Copyright 2026 Salesforce, Inc. All rights reserved.
+---
+apiVersion: gateway.mulesoft.com/v1alpha1
+kind: ApiInstance
+metadata:
+  name: ingress-http
+spec:
+  address: http://0.0.0.0:8081
+  services:
+    upstream:
+      address: http://backend
+      routes:
+        - config:
+            destinationPath: /anything/echo/
+  policies:
+    - policyRef:
+        name: ai-asset-sunset-flex-v1-0 # This value will be overriden during 'make run' execution
+      # Fill the config with a policy configuration that matches the schema specified in the policy
+      # definition gcl.yaml. Eg:
+      # config:
+      #   someProperty: desiredValue
+      config:
+        deprecationAt: "2026-01-01T00:00:00Z"
+        sunsetAt: "2030-01-01T00:00:00Z"
+        switchOffAt: "2030-02-01T00:00:00Z"
+        message: "Demo agent is deprecated."
+        successorName: "demo-agent-v2"
+        docsUrl: "https://example.com/deprecations/demo-agent"
