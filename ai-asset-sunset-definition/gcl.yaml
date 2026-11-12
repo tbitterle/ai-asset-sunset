@@ -10,7 +10,7 @@ metadata:
       heads-up headers and metadata, scheduled brownouts, then a protocol-aware
       tombstone that answers without calling upstream.
     metadata/interfaceScope: api
-    metadata/capabilities/assetTypes: http,rest,mcp,a2a,a2av1,llm
+    metadata/capabilities/assetTypes: http,rest,mcp,a2a,a2a_v1,llm
 spec:
   extends:
     - name: extension-definition

@@ -6,7 +6,7 @@
 | `sunsetAt` | string | required | Start of tombstone; must be after `deprecationAt` |
 | `switchOffAt` | string | required | Planned removal; ≥ `sunsetAt` |
 | `message` | string ≤ 500 | generic | Shown to humans and LLMs |
-| `successorName` / `successorUrl` | string | "" | `successorUrl` also goes into `Link rel="successor-version"` |
+| `successorName` / `successorUrl` | string | "" | Shown from Date 1 (heads-up) onwards. `successorUrl` also goes into `Link rel="successor-version"`, following the same `disclosure` rule as the JSON notice |
 | `docsUrl` | string | "" | Public notice; `Link rel="deprecation"` |
 | `contactName` / `contactEmail` | string | "" | Use a role mailbox. Shown only to identified callers under `standard` |
 | `protocol` | auto/mcp/a2a/llm/http | auto | Forces the response shape |

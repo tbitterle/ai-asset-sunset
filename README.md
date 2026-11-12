@@ -17,7 +17,7 @@ An Omni Gateway policy that retires an asset in three dated phases:
 ## Quick facts
 | | |
 |---|---|
-| Asset types | `http`, `rest`, `mcp`, `a2a`, `a2av1`, `llm` |
+| Asset types | `http`, `rest`, `mcp`, `a2a`, `a2a_v1`, `llm` |
 | Min. gateway | Omni/Flex Gateway 1.12.1 (stop-iteration) |
 | PDK | 1.10.0, Rust 1.89 (PDK 1.10 deps need it), `wasm32-wasip1` |
 | Placement | **After** your auth policy (Client ID Enforcement / JWT); for MCP, after MCP Support |
@@ -35,7 +35,7 @@ docs/                         the 4 catalog tabs: overview, configuration, examp
 ## Build and test
 ```sh
 cd ai-asset-sunset-definition && make build          # needs anypoint-cli-v4 PDK plugin
-cd ../ai-asset-sunset-flex && cargo test --lib        # 34 unit + pdk-unit tests
+cd ../ai-asset-sunset-flex && cargo test --lib        # 37 unit + pdk-unit tests
 make build-asset-files && make build && make run      # local Flex 1.12.1 in Docker
 ```
 See `../test-plan.md` for the full local and online test plan, and `../red-team-10-attacks.md` for the threat model.

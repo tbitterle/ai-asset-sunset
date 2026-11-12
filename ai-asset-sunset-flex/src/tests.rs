@@ -251,6 +251,23 @@ mod tests {
         assert!(!r.header("x-p4a-sunset-notice").unwrap().contains('\n'));
     }
 
+    // T20 — heads-up: successor-version Link only for identified callers (disclosure: standard)
+    #[test]
+    fn t20_successor_link_only_for_identified_callers() {
+        use pdk::authentication::AuthenticationData;
+        let conf = cfg(PAST, FUTURE, FUTURE2, json!({"successorUrl": "https://gw.example.com/orders-v2"}));
+        let mut anon = UnitTestBuilder::default().with_config(conf.clone()).with_backend(upstream_json("{}")).with_entrypoint(crate::configure);
+        let r = anon.request(UnitHttpRequest::get().with_path("/orders"));
+        let link = r.header("link").unwrap_or_default();
+        assert!(link.contains("rel=\"deprecation\""));
+        assert!(!link.contains("successor-version"), "anonymous caller must not see the successor link");
+
+        let mut known = UnitTestBuilder::default().with_config(conf).with_backend(upstream_json("{}")).with_entrypoint(crate::configure);
+        let auth = AuthenticationData { principal: None, client_id: Some("sales-bot".into()), client_name: Some("Sales Bot".into()), properties: Default::default() };
+        let r = known.request(UnitHttpRequest::get().with_path("/orders").with_authentication_data(auth));
+        assert!(r.header("link").unwrap_or_default().contains("successor-version"), "identified caller sees the successor link");
+    }
+
     // T17 — forged A2A header on a REST path does not unlock task grace (auto mode)
     #[test]
     fn t17_forged_a2a_follow_up_no_grace() {

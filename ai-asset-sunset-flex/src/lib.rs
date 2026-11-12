@@ -117,7 +117,7 @@ fn to_response(r: notice::Reply) -> Response {
 
 fn tombstone(s: &Settings, proto: Proto, phase: Phase, method: &str, body: Option<&Value>, identified: bool, now: DateTime<Utc>) -> Response {
     let n = notice::notice(s, phase, identified);
-    let base = notice::deprecation_headers(s, phase);
+    let base = notice::deprecation_headers(s, phase, identified);
     let reply = match proto {
         Proto::Mcp => notice::mcp_tombstone(method, body, &n, s.mcp_tool_result, &base),
         Proto::A2aJsonRpcLegacy | Proto::A2aJsonRpcV1 | Proto::A2aHttpJson => notice::a2a_tombstone(proto, body, &n, &base),
@@ -223,7 +223,7 @@ async fn response_filter(state: ResponseState, data: RequestData<Ctx>, s: Rc<Set
     let phase = ctx.phase.unwrap_or(Phase::HeadsUp);
     let hs = state.into_headers_state().await;
     let h = hs.handler();
-    for (k, v) in notice::deprecation_headers(&s, phase) {
+    for (k, v) in notice::deprecation_headers(&s, phase, ctx.identified) {
         h.set_header(&k, &v);
     }
     if ctx.agent_card {

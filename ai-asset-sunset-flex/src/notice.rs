@@ -41,8 +41,18 @@ fn http_date(t: DateTime<Utc>) -> String {
     t.format("%a, %d %b %Y %H:%M:%S GMT").to_string()
 }
 
+/// Whether successor and contact may be shown to this caller (`disclosure` setting).
+pub fn show_details(s: &Settings, identified: bool) -> bool {
+    match s.disclosure {
+        Disclosure::Full => true,
+        Disclosure::Standard => identified,
+        Disclosure::Minimal => false,
+    }
+}
+
 /// RFC 9745 `Deprecation: @<epoch>`, RFC 8594 `Sunset: <HTTP-date>`, Link relations.
-pub fn deprecation_headers(s: &Settings, phase: Phase) -> Vec<(String, String)> {
+/// The `successor-version` link follows the same disclosure rule as the JSON notice.
+pub fn deprecation_headers(s: &Settings, phase: Phase, identified: bool) -> Vec<(String, String)> {
     let mut h = vec![
         ("deprecation".to_string(), format!("@{}", s.deprecation_at.timestamp())),
         ("sunset".to_string(), http_date(s.sunset_at)),
@@ -53,7 +63,7 @@ pub fn deprecation_headers(s: &Settings, phase: Phase) -> Vec<(String, String)> 
     if !s.docs_url.is_empty() {
         links.push(format!("<{}>; rel=\"deprecation\"", header_safe(&s.docs_url, 400)));
     }
-    if !s.successor_url.is_empty() {
+    if !s.successor_url.is_empty() && show_details(s, identified) {
         links.push(format!("<{}>; rel=\"successor-version\"", header_safe(&s.successor_url, 400)));
     }
     if !links.is_empty() {
@@ -64,11 +74,7 @@ pub fn deprecation_headers(s: &Settings, phase: Phase) -> Vec<(String, String)> 
 
 /// The machine-readable deprecation object (shared by every protocol).
 pub fn notice(s: &Settings, phase: Phase, identified: bool) -> Value {
-    let show_details = match s.disclosure {
-        Disclosure::Full => true,
-        Disclosure::Standard => identified,
-        Disclosure::Minimal => false,
-    };
+    let show_details = show_details(s, identified);
     let mut m = Map::new();
     m.insert("status".into(), json!(match phase {
         Phase::HeadsUp | Phase::Active => "deprecated",
@@ -424,12 +430,35 @@ mod tests {
     #[test]
     fn headers_follow_rfcs() {
         let s = settings("standard");
-        let h = deprecation_headers(&s, Phase::HeadsUp);
+        let h = deprecation_headers(&s, Phase::HeadsUp, true);
         let get = |k: &str| h.iter().find(|(n, _)| n == k).map(|(_, v)| v.clone()).unwrap();
         assert_eq!(get("deprecation"), format!("@{}", s.deprecation_at.timestamp()));
         assert_eq!(get("sunset"), "Fri, 01 Jan 2027 00:00:00 GMT");
         assert!(get("link").contains("rel=\"deprecation\""));
         assert!(get("link").contains("rel=\"successor-version\""));
+    }
+
+    #[test]
+    fn successor_link_header_follows_disclosure() {
+        let link = |d: &str, id: bool| {
+            deprecation_headers(&settings(d), Phase::HeadsUp, id)
+                .into_iter().find(|(n, _)| n == "link").map(|(_, v)| v).unwrap_or_default()
+        };
+        // standard: anonymous callers get the docs link only, identified callers also the successor
+        assert!(link("standard", false).contains("rel=\"deprecation\""));
+        assert!(!link("standard", false).contains("successor-version"));
+        assert!(link("standard", true).contains("successor-version"));
+        assert!(!link("minimal", true).contains("successor-version"));
+        assert!(link("full", false).contains("successor-version"));
+    }
+
+    #[test]
+    fn heads_up_notice_carries_successor_and_contact() {
+        let n = notice(&settings("standard"), Phase::HeadsUp, true);
+        assert_eq!(n["status"], "deprecated");
+        assert_eq!(n["successor"]["name"], "orders-agent-v2");
+        assert_eq!(n["contact"]["email"], "ai-platform@example.com");
+        assert!(notice(&settings("standard"), Phase::HeadsUp, false).get("successor").is_none());
     }
 
     #[test]
